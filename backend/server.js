@@ -12,3 +12,4 @@ app.listen(PORT, () => {
 console.log('hello from CI/CD');
 console.log('hello from CI/CD');
 console.log('trigger pipeline');
+console.log('trigger pipeline v2');
