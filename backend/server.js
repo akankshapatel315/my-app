@@ -10,3 +10,4 @@ app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
 console.log('hello from CI/CD');
+console.log('hello from CI/CD');
