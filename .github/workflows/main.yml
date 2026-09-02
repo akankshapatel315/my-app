@@ -10,6 +10,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      sha: ${{ github.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,3 +40,30 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/my-app-frontend:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/my-app-frontend:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: self-hosted   # this MUST run on your laptop, GitHub's servers can't reach minikube
+    steps:
+      - name: Log in to GHCR (so minikube/docker can pull)
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Pull new images into local docker
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/my-app-backend:${{ github.sha }}
+          docker pull ghcr.io/${{ github.repository_owner }}/my-app-frontend:${{ github.sha }}
+
+      - name: Load images into minikube
+        run: |
+          minikube image load ghcr.io/${{ github.repository_owner }}/my-app-backend:${{ github.sha }}
+          minikube image load ghcr.io/${{ github.repository_owner }}/my-app-frontend:${{ github.sha }}
+
+      - name: Update deployments
+        run: |
+          kubectl set image deployment/backend backend=ghcr.io/${{ github.repository_owner }}/my-app-backend:${{ github.sha }} -n my-app
+          kubectl set image deployment/frontend frontend=ghcr.io/${{ github.repository_owner }}/my-app-frontend:${{ github.sha }} -n my-app
+
+      - name: Verify rollout
+        run: |
+          kubectl rollout status deployment/backend -n my-app
+          kubectl rollout status deployment/frontend -n my-app
